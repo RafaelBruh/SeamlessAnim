@@ -1,33 +1,13 @@
--- 💎SeamlessAnim - FE Edition
+-- 💎SeamlessAnim - Full Script
 -- Works on Delta and similar executors
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local InsertService = game:GetService("InsertService")
 local localPlayer = Players.LocalPlayer
 
 local Packs = {
-    ["Adidas Aura"] = {
-        run      = "rbxassetid://11328441113",
-        walk     = "rbxassetid://11328441113",
-        jump     = "rbxassetid://11328424351",
-        idles    = {"rbxassetid://11328416434"},
-        fall     = "rbxassetid://11328434771",
-        swim     = "rbxassetid://11328446723",
-        swimidle = "rbxassetid://11328446723",
-        climb    = "rbxassetid://11328410212",
-    },
-    ["Adidas Sports"] = {
-        run      = "rbxassetid://18538133604",
-        walk     = "rbxassetid://18538146480",
-        jump     = "rbxassetid://18538153691",
-        idles    = {"rbxassetid://18538150608"},
-        fall     = "rbxassetid://18538164337",
-        swim     = "rbxassetid://18538158932",
-        swimidle = "rbxassetid://18538158932",
-        climb    = "rbxassetid://18538170170",
-    },
+
     ["Astronaut"] = {
         run      = "rbxassetid://891636393",
         walk     = "rbxassetid://891636393",
@@ -211,7 +191,7 @@ local Packs = {
 }
 
 local PackOrder = {
-    "Adidas Aura", "Adidas Sports", "Cartoony",  "Ninja",
+    "Cartoony",  "Ninja",
     "Robot",       "Zombie",        "Vampire",   "Werewolf",
     "Superhero",   "Knight",        "Pirate",    "Mage",
     "Toy",         "Bubbly",        "Stylish",   "Levitation",
@@ -224,71 +204,44 @@ local Emotes = {
     { name = "Fake Ragdoll",          id = "rbxassetid://96460555957347"  },
 }
 
-local currentPack      = nil
+local currentPack     = nil
 local activeEmoteTrack = nil
-local activeAnimBtn    = nil
-local activeEmoteBtn   = nil
-local activeTracks     = {}
-
-local DEFAULT_POS  = UDim2.new(0, 130, 0.5, -220)
-local FW, FH       = 320, 440
-local MIN_W, MIN_H = 280, 340
+local activeAnimBtn   = nil
+local activeEmoteBtn  = nil
 
 -- ================================================
 -- SOUND
 -- ================================================
-local function playSound(id, pitch, vol)
+local function playClick()
     local s = Instance.new("Sound")
-    s.SoundId = "rbxassetid://" .. id
-    s.PlaybackSpeed = pitch or 1
-    s.Volume = vol or 0.5
+    s.SoundId = "rbxassetid://6026984224"
+    s.Volume = 0.5
     s.Parent = localPlayer.PlayerGui
     s:Play()
     game:GetService("Debris"):AddItem(s, 2)
 end
 
-local function playClick() playSound("6026984224", 1,   0.4) end
-local function playApply() playSound("4612378143", 1,   0.4) end
-local function playOpen()  playSound("6026984224", 0.8, 0.3) end
+local function playApply()
+    local s = Instance.new("Sound")
+    s.SoundId = "rbxassetid://4612378143"
+    s.Volume = 0.4
+    s.Parent = localPlayer.PlayerGui
+    s:Play()
+    game:GetService("Debris"):AddItem(s, 2)
+end
 
--- ================================================
--- FE ANIMATION CORE
--- The tool trick forces replication through
--- Roblox's legitimate server pathway
--- ================================================
-local function FEPlayAnim(animId, looped, priority)
-    local character = localPlayer.Character
-    if not character then return nil end
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return nil end
-
-    -- Create a temporary tool to force server replication
-    local tool = Instance.new("Tool")
-    tool.RequiresHandle = false
-    tool.Name = "AnimTool"
-    tool.Parent = character
-
-    local anim = Instance.new("Animation")
-    anim.AnimationId = animId
-    anim.Parent = tool
-
-    local track = humanoid:LoadAnimation(anim)
-    track.Priority = priority or Enum.AnimationPriority.Action
-    track.Looped = looped or false
-    track:Play()
-
-    -- Cleanup tool after loading
-    task.delay(0.5, function()
-        if tool and tool.Parent then
-            tool:Destroy()
-        end
-    end)
-
-    return track
+local function playOpen()
+    local s = Instance.new("Sound")
+    s.SoundId = "rbxassetid://6026984224"
+    s.Volume = 0.3
+    s.PlaybackSpeed = 0.8
+    s.Parent = localPlayer.PlayerGui
+    s:Play()
+    game:GetService("Debris"):AddItem(s, 2)
 end
 
 -- ================================================
--- APPLY PACK USING FE METHOD
+-- APPLY PACK
 -- ================================================
 local function applyPack(packName)
     local pack = Packs[packName]
@@ -296,22 +249,11 @@ local function applyPack(packName)
     local character = localPlayer.Character
     if not character then return end
 
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+    local humanoid = character:FindFirstChild("Humanoid")
+    local animator = humanoid and humanoid:FindFirstChild("Animator")
     local animateScript = character:FindFirstChild("Animate")
     if not animateScript or not animator then return end
 
-    -- Stop all active tracks
-    for _, track in ipairs(activeTracks) do
-        pcall(function() track:Stop(0) end)
-    end
-    activeTracks = {}
-
-    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-        track:Stop(0)
-    end
-
-    -- METHOD 1: Modify Animate script (works for official packs)
     local function setAnim(folder, id)
         local f = animateScript:FindFirstChild(folder)
         if f then
@@ -342,8 +284,12 @@ local function applyPack(packName)
         end
     end
 
+    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+        track:Stop(0)
+    end
+
     animateScript.Enabled = false
-    task.wait(0.1)
+    task.wait(0.15)
 
     setAnim("walk",     pack.walk)
     setAnim("run",      pack.run)
@@ -357,24 +303,8 @@ local function applyPack(packName)
     animateScript.Enabled = true
     task.wait(0.1)
 
-    -- METHOD 2: FE tool trick on top
-    -- Forces the idle through the server pathway
-    -- This is what makes UGC animations visible to others
-    local idleId = pack.idles and pack.idles[1] or nil
-    if idleId then
-        local track = FEPlayAnim(idleId, true, Enum.AnimationPriority.Idle)
-        if track then
-            table.insert(activeTracks, track)
-        end
-    end
-
-    -- Stop anything the Animate script auto-played
-    task.wait(0.1)
     for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-        if track.Priority ~= Enum.AnimationPriority.Idle and
-           track.Priority ~= Enum.AnimationPriority.Action then
-            track:Stop(0)
-        end
+        track:Stop(0)
     end
 
     currentPack = packName
@@ -383,40 +313,37 @@ local function applyPack(packName)
 end
 
 -- ================================================
--- EMOTES USING FE METHOD
+-- EMOTES
 -- ================================================
 local function playEmote(id)
     local character = localPlayer.Character
     if not character then return end
-
+    local humanoid = character:FindFirstChild("Humanoid")
+    local animator = humanoid and humanoid:FindFirstChild("Animator")
+    if not animator then return end
     if activeEmoteTrack then
-        pcall(function() activeEmoteTrack:Stop() end)
+        activeEmoteTrack:Stop()
         activeEmoteTrack = nil
     end
-
-    local track = FEPlayAnim(id, true, Enum.AnimationPriority.Action)
-    if track then
-        activeEmoteTrack = track
-        playApply()
-        print("[💎SeamlessAnim] Playing emote: " .. id)
-    end
+    local anim = Instance.new("Animation")
+    anim.AnimationId = id
+    local track = animator:LoadAnimation(anim)
+    track.Priority = Enum.AnimationPriority.Action
+    track.Looped = true
+    track:Play()
+    activeEmoteTrack = track
+    playApply()
 end
 
 local function stopEmote()
     if activeEmoteTrack then
-        pcall(function() activeEmoteTrack:Stop() end)
+        activeEmoteTrack:Stop()
         activeEmoteTrack = nil
     end
-    if currentPack then
-        task.spawn(function() applyPack(currentPack) end)
-    end
+    if currentPack then applyPack(currentPack) end
     if activeEmoteBtn then
-        TweenService:Create(activeEmoteBtn, TweenInfo.new(0.15), {
-            BackgroundColor3 = Color3.fromRGB(22, 22, 22),
-            TextColor3 = Color3.fromRGB(200, 200, 200),
-        }):Play()
-        local s = activeEmoteBtn:FindFirstChildWhichIsA("UIStroke")
-        if s then s.Color = Color3.fromRGB(35, 35, 35) end
+        activeEmoteBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        activeEmoteBtn.TextColor3 = Color3.fromRGB(210, 210, 210)
         activeEmoteBtn = nil
     end
     playClick()
@@ -425,13 +352,18 @@ end
 -- ================================================
 -- GUI
 -- ================================================
+local MIN_W, MIN_H = 280, 340
+local FW, FH = 320, 440
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "SeamlessAnimGUI"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = localPlayer.PlayerGui
 
--- Toggle button
+-- ------------------------------------------------
+-- TOGGLE BUTTON (draggable)
+-- ------------------------------------------------
 local toggleFrame = Instance.new("Frame")
 toggleFrame.Size = UDim2.new(0, 110, 0, 40)
 toggleFrame.Position = UDim2.new(0, 10, 0.5, -20)
@@ -441,6 +373,7 @@ toggleFrame.Active = true
 toggleFrame.Parent = screenGui
 Instance.new("UICorner", toggleFrame).CornerRadius = UDim.new(0, 10)
 
+-- Glowing border on toggle
 local toggleStroke = Instance.new("UIStroke")
 toggleStroke.Color = Color3.fromRGB(80, 160, 255)
 toggleStroke.Thickness = 1.5
@@ -455,7 +388,7 @@ toggleBtn.TextSize = 11
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.Parent = toggleFrame
 
--- Drag toggle
+-- Drag toggle button
 do
     local dragging, dragStart, startPos
     toggleFrame.InputBegan:Connect(function(input)
@@ -484,10 +417,12 @@ do
     end)
 end
 
--- Main frame
+-- ------------------------------------------------
+-- MAIN FRAME
+-- ------------------------------------------------
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, FW, 0, FH)
-mainFrame.Position = DEFAULT_POS
+mainFrame.Position = UDim2.new(0, 130, 0.5, -(FH / 2))
 mainFrame.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
@@ -495,29 +430,31 @@ mainFrame.Active = true
 mainFrame.Parent = screenGui
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
 
+-- Outer glow stroke
 local mainStroke = Instance.new("UIStroke")
 mainStroke.Color = Color3.fromRGB(80, 160, 255)
 mainStroke.Thickness = 1.5
 mainStroke.Parent = mainFrame
 
--- Glow pulse
+-- Animated glow cycle
 task.spawn(function()
     local t = 0
     while mainFrame do
         t += 0.03
-        local b = 0.5 + 0.5 * math.sin(t)
-        local c = Color3.fromRGB(
-            math.floor(40 + b * 40),
-            math.floor(120 + b * 40),
+        local brightness = 0.5 + 0.5 * math.sin(t)
+        mainStroke.Color = Color3.fromRGB(
+            math.floor(40 + brightness * 40),
+            math.floor(120 + brightness * 40),
             255
         )
-        mainStroke.Color = c
-        toggleStroke.Color = c
+        toggleStroke.Color = mainStroke.Color
         task.wait(0.05)
     end
 end)
 
--- Title bar
+-- ------------------------------------------------
+-- TITLE BAR
+-- ------------------------------------------------
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 46)
 titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
@@ -526,6 +463,7 @@ titleBar.Active = true
 titleBar.Parent = mainFrame
 Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 14)
 
+-- Bottom fill to square off title bar bottom
 local titleFill = Instance.new("Frame")
 titleFill.Size = UDim2.new(1, 0, 0, 14)
 titleFill.Position = UDim2.new(0, 0, 1, -14)
@@ -556,6 +494,17 @@ closeBtn.BorderSizePixel = 0
 closeBtn.Parent = mainFrame
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 
+closeBtn.MouseButton1Click:Connect(function()
+    playClick()
+    TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, FW, 0, 0),
+        Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset, mainFrame.Position.Y.Scale, mainFrame.Position.Y.Offset + FH / 2)
+    }):Play()
+    task.wait(0.2)
+    mainFrame.Visible = false
+    mainFrame.Size = UDim2.new(0, FW, 0, FH)
+end)
+
 -- Drag main frame
 do
     local dragging, dragStart, startPos
@@ -585,7 +534,9 @@ do
     end)
 end
 
--- Resize handle
+-- ------------------------------------------------
+-- RESIZE HANDLE
+-- ------------------------------------------------
 local resizeHandle = Instance.new("TextButton")
 resizeHandle.Size = UDim2.new(0, 20, 0, 20)
 resizeHandle.Position = UDim2.new(1, -20, 1, -20)
@@ -626,7 +577,9 @@ do
     end)
 end
 
--- Tabs
+-- ------------------------------------------------
+-- TABS
+-- ------------------------------------------------
 local tabBar = Instance.new("Frame")
 tabBar.Size = UDim2.new(1, -20, 0, 34)
 tabBar.Position = UDim2.new(0, 10, 0, 52)
@@ -651,6 +604,7 @@ end
 local animTab  = makeTab("🏃 Animations", 0)
 local emoteTab = makeTab("💃 Emotes", 0.5)
 
+-- Divider
 local divider = Instance.new("Frame")
 divider.Size = UDim2.new(1, -20, 0, 1)
 divider.Position = UDim2.new(0, 10, 0, 91)
@@ -658,6 +612,7 @@ divider.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 divider.BorderSizePixel = 0
 divider.Parent = mainFrame
 
+-- Content area
 local contentFrame = Instance.new("Frame")
 contentFrame.Position = UDim2.new(0, 0, 0, 96)
 contentFrame.Size = UDim2.new(1, 0, 1, -104)
@@ -665,7 +620,9 @@ contentFrame.BackgroundTransparency = 1
 contentFrame.ClipsDescendants = true
 contentFrame.Parent = mainFrame
 
--- Anim scroll
+-- ------------------------------------------------
+-- ANIMATION SCROLL
+-- ------------------------------------------------
 local animScroll = Instance.new("ScrollingFrame")
 animScroll.Size = UDim2.new(1, 0, 1, 0)
 animScroll.BackgroundTransparency = 1
@@ -679,9 +636,9 @@ animLayout.Padding = UDim.new(0, 5)
 animLayout.Parent = animScroll
 
 local animPad = Instance.new("UIPadding")
-animPad.PaddingLeft   = UDim.new(0, 10)
-animPad.PaddingRight  = UDim.new(0, 10)
-animPad.PaddingTop    = UDim.new(0, 8)
+animPad.PaddingLeft = UDim.new(0, 10)
+animPad.PaddingRight = UDim.new(0, 10)
+animPad.PaddingTop = UDim.new(0, 8)
 animPad.PaddingBottom = UDim.new(0, 8)
 animPad.Parent = animScroll
 
@@ -710,16 +667,15 @@ for _, packName in ipairs(PackOrder) do
         if activeAnimBtn then
             TweenService:Create(activeAnimBtn, TweenInfo.new(0.15), {
                 BackgroundColor3 = Color3.fromRGB(22, 22, 22),
-                TextColor3 = Color3.fromRGB(200, 200, 200),
+                TextColor3 = Color3.fromRGB(200, 200, 200)
             }):Play()
-            local s = activeAnimBtn:FindFirstChildWhichIsA("UIStroke")
-            if s then s.Color = Color3.fromRGB(35, 35, 35) end
+            activeAnimBtn:FindFirstChildWhichIsA("UIStroke").Color = Color3.fromRGB(35, 35, 35)
         end
         TweenService:Create(btn, TweenInfo.new(0.15), {
             BackgroundColor3 = Color3.fromRGB(20, 60, 120),
-            TextColor3 = Color3.fromRGB(255, 255, 255),
+            TextColor3 = Color3.fromRGB(255, 255, 255)
         }):Play()
-        stroke.Color = Color3.fromRGB(80, 160, 255)
+        btn:FindFirstChildWhichIsA("UIStroke").Color = Color3.fromRGB(80, 160, 255)
         activeAnimBtn = btn
         task.spawn(function() applyPack(packName) end)
     end)
@@ -727,7 +683,9 @@ end
 
 animScroll.CanvasSize = UDim2.new(0, 0, 0, #PackOrder * 41 + 20)
 
--- Emote scroll
+-- ------------------------------------------------
+-- EMOTE SCROLL
+-- ------------------------------------------------
 local emoteScroll = Instance.new("ScrollingFrame")
 emoteScroll.Size = UDim2.new(1, 0, 1, 0)
 emoteScroll.BackgroundTransparency = 1
@@ -742,12 +700,13 @@ emoteLayout.Padding = UDim.new(0, 5)
 emoteLayout.Parent = emoteScroll
 
 local emotePad = Instance.new("UIPadding")
-emotePad.PaddingLeft   = UDim.new(0, 10)
-emotePad.PaddingRight  = UDim.new(0, 10)
-emotePad.PaddingTop    = UDim.new(0, 8)
+emotePad.PaddingLeft = UDim.new(0, 10)
+emotePad.PaddingRight = UDim.new(0, 10)
+emotePad.PaddingTop = UDim.new(0, 8)
 emotePad.PaddingBottom = UDim.new(0, 8)
 emotePad.Parent = emoteScroll
 
+-- Stop button
 local stopBtn = Instance.new("TextButton")
 stopBtn.Size = UDim2.new(1, 0, 0, 36)
 stopBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 20)
@@ -782,16 +741,15 @@ for _, emote in ipairs(Emotes) do
         if activeEmoteBtn then
             TweenService:Create(activeEmoteBtn, TweenInfo.new(0.15), {
                 BackgroundColor3 = Color3.fromRGB(22, 22, 22),
-                TextColor3 = Color3.fromRGB(200, 200, 200),
+                TextColor3 = Color3.fromRGB(200, 200, 200)
             }):Play()
-            local s = activeEmoteBtn:FindFirstChildWhichIsA("UIStroke")
-            if s then s.Color = Color3.fromRGB(35, 35, 35) end
+            activeEmoteBtn:FindFirstChildWhichIsA("UIStroke").Color = Color3.fromRGB(35, 35, 35)
         end
         TweenService:Create(btn, TweenInfo.new(0.15), {
             BackgroundColor3 = Color3.fromRGB(60, 20, 90),
-            TextColor3 = Color3.fromRGB(255, 255, 255),
+            TextColor3 = Color3.fromRGB(255, 255, 255)
         }):Play()
-        stroke.Color = Color3.fromRGB(200, 100, 255)
+        btn:FindFirstChildWhichIsA("UIStroke").Color = Color3.fromRGB(200, 100, 255)
         activeEmoteBtn = btn
         task.spawn(function() playEmote(emote.id) end)
     end)
@@ -799,14 +757,18 @@ end
 
 emoteScroll.CanvasSize = UDim2.new(0, 0, 0, (#Emotes + 1) * 41 + 20)
 
--- Tab switching
+-- ------------------------------------------------
+-- TAB SWITCHING
+-- ------------------------------------------------
 local function setTab(isAnim)
     animScroll.Visible = isAnim
     emoteScroll.Visible = not isAnim
+
     TweenService:Create(animTab, TweenInfo.new(0.15), {
         BackgroundColor3 = isAnim and Color3.fromRGB(20, 60, 120) or Color3.fromRGB(28, 28, 28),
         TextColor3 = isAnim and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(140, 140, 140),
     }):Play()
+
     TweenService:Create(emoteTab, TweenInfo.new(0.15), {
         BackgroundColor3 = not isAnim and Color3.fromRGB(60, 20, 90) or Color3.fromRGB(28, 28, 28),
         TextColor3 = not isAnim and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(140, 140, 140),
@@ -817,28 +779,44 @@ setTab(true)
 animTab.MouseButton1Click:Connect(function() playClick() setTab(true) end)
 emoteTab.MouseButton1Click:Connect(function() playClick() setTab(false) end)
 
--- Open/close with position fix
+-- ------------------------------------------------
+-- TOGGLE OPEN/CLOSE WITH ANIMATION
+-- ------------------------------------------------
 local guiOpen = false
-local lastPosition = DEFAULT_POS
 
 local function openGui()
     guiOpen = true
-    mainFrame.Position = lastPosition
-    mainFrame.Size = UDim2.new(0, FW, 0, 0)
     mainFrame.Visible = true
+    mainFrame.Size = UDim2.new(0, FW, 0, 0)
+    mainFrame.Position = UDim2.new(
+        mainFrame.Position.X.Scale,
+        mainFrame.Position.X.Offset,
+        mainFrame.Position.Y.Scale,
+        mainFrame.Position.Y.Offset + FH / 2
+    )
     playOpen()
     TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
         Size = UDim2.new(0, FW, 0, FH),
+        Position = UDim2.new(
+            mainFrame.Position.X.Scale,
+            mainFrame.Position.X.Offset,
+            mainFrame.Position.Y.Scale,
+            mainFrame.Position.Y.Offset - FH / 2
+        )
     }):Play()
 end
 
 local function closeGui()
     guiOpen = false
-    lastPosition = mainFrame.Position
-    playClick.()
-    local tween = TweenService:Create(mainFrame,
-        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+    playClick()
+    local tween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
         Size = UDim2.new(0, FW, 0, 0),
+        Position = UDim2.new(
+            mainFrame.Position.X.Scale,
+            mainFrame.Position.X.Offset,
+            mainFrame.Position.Y.Scale,
+            mainFrame.Position.Y.Offset + FH / 2
+        )
     })
     tween:Play()
     tween.Completed:Connect(function()
@@ -855,18 +833,17 @@ closeBtn.MouseButton1Click:Connect(function()
     closeGui()
 end)
 
+-- Q key toggle
 UserInputService.InputBegan:Connect(function(input, processed)
     if not processed and input.KeyCode == Enum.KeyCode.Q then
         if guiOpen then closeGui() else openGui() end
     end
 end)
 
-localPlayer.CharacterAdded:Connect(function()
-    activeTracks = {}
+-- Respawn
+localPlayer.CharacterAdded:Connect(function(character)
     task.wait(1)
-    if currentPack then
-        task.spawn(function() applyPack(currentPack) end)
-    end
+    if currentPack then applyPack(currentPack) end
 end)
 
-print("[💎SeamlessAnim] FE Edition loaded! " .. #PackOrder .. " packs ready.")
+print("[💎SeamlessAnim] Loaded! " .. #PackOrder .. " packs ready. Press Q or tap toggle to open.")
